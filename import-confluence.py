@@ -6,12 +6,14 @@ import re
 import mimetypes
 from xmlrpc.client import ServerProxy, Fault, Binary
 from getpass import getpass
-
+import logging
 # doku wiki parser
 from doku import doku_to_confluence
 
 # settings
 from setting import doku_data_path, space, parent_page
+
+logger = logging.getLogger(__name__)
 
 # Prepare SSL Context
 context = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
@@ -81,18 +83,20 @@ def save(project_dir, filename, pagename, is_directory, tree):
     with open (debug_file, 'w') as f:
         f.write(content)
     # Create empty page with content
-    content = server.confluence2.convertWikiToStorageFormat(token, content)
-    parent_id = tree.get_parent (project_dir, join(project_dir, filename))
-    newpage = { 'content' : content,
-                'parentId' : parent_id,
-                'space' : space,
-                'title' : pagename}
-    server.confluence2.storePage(token, newpage)
-    # Push attachments to the page
-    result = server.confluence2.getPage(token,space,pagename)
-    save_attachments(space, result, attachment)
-    return result
-
+    try:
+        content = server.confluence2.convertWikiToStorageFormat(token, content)
+        parent_id = tree.get_parent (project_dir, join(project_dir, filename))
+        newpage = { 'content' : content,
+                    'parentId' : parent_id,
+                    'space' : space,
+                    'title' : pagename}
+        server.confluence2.storePage(token, newpage)
+        # Push attachments to the page
+        result = server.confluence2.getPage(token,space,pagename)
+        save_attachments(space, result, attachment)
+        return result
+    except Exception as e :
+        logger.debug("The Error is {}".format(e))
 def add_page (project_dir, filename, is_directory = False):
     pagename = filename.strip()
     if filename[-4:] == '.txt':
